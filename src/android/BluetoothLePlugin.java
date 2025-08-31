@@ -4300,17 +4300,42 @@ public class BluetoothLePlugin extends CordovaPlugin {
       addDevice(returnObj, device);
 
       //If successfully read, return value
-      if (status == BluetoothGatt.GATT_SUCCESS) {
-        addProperty(returnObj, keyStatus, statusRead);
-        addPropertyBytes(returnObj, keyValue, characteristic.getValue());
-        callbackContext.success(returnObj);
+      if (status == BluetoothGatt.GATT_SUCCESS || characteristic.getValue() != null) {
+          if (status != BluetoothGatt.GATT_SUCCESS) {
+              // Log the error but continue because data was received.
+              Log.d("BLE_DEBUG", "onCharacteristicRead: Received data despite status=" + status + " (" + getGattStatusMessage(status) + ")");
+          }
+
+          addProperty(returnObj, keyStatus, statusRead);
+          addPropertyBytes(returnObj, keyValue, characteristic.getValue());
+          callbackContext.success(returnObj);
       } else {
-        //Else it failed
-        addProperty(returnObj, keyError, errorRead);
-        addProperty(returnObj, keyMessage, logReadFailReturn);
-        callbackContext.error(returnObj);
+          // Only fail if there was a real error and no data was received.
+          Log.d("BLE_DEBUG", "onCharacteristicRead: Value is null with error status " + status);
+          addProperty(returnObj, keyError, errorRead);
+          addProperty(returnObj, keyMessage, logReadFailReturn);
+          callbackContext.error(returnObj);
       }
     }
+
+   private String getGattStatusMessage(int status) {
+	    switch (status) {
+		case BluetoothGatt.GATT_SUCCESS: return "GATT_SUCCESS";
+		case BluetoothGatt.GATT_READ_NOT_PERMITTED: return "GATT_READ_NOT_PERMITTED";
+		case BluetoothGatt.GATT_REQUEST_NOT_SUPPORTED: return "GATT_REQUEST_NOT_SUPPORTED";
+		case BluetoothGatt.GATT_INSUFFICIENT_AUTHENTICATION: return "GATT_INSUFFICIENT_AUTHENTICATION";
+		case BluetoothGatt.GATT_FAILURE: return "GATT_FAILURE";
+		default: return "UNKNOWN (" + status + ")";
+	    }
+	}
+
+	private String bytesToHex(byte[] bytes) {
+	    StringBuilder sb = new StringBuilder();
+	    for (byte b : bytes) {
+		sb.append(String.format("%02X ", b));
+	    }
+	    return sb.toString();
+	}
 
     @Override
     public void onCharacteristicChanged(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
